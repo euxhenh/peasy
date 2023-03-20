@@ -4,7 +4,7 @@ from abc import ABC
 from collections import namedtuple
 from itertools import zip_longest
 from math import ceil
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING, List, Tuple, overload
 
 import matplotlib.pyplot as plt
 
@@ -38,9 +38,9 @@ class Artist(ABC):
         self,
         ax: plt.Axes,
         /,
-        title: str = None,
-        xlabel: str = None,
-        ylabel: str = None,
+        title: str | None = None,
+        xlabel: str | None = None,
+        ylabel: str | None = None,
         legend: bool = True,
     ) -> None:
         """Adds text to axes.
@@ -94,21 +94,24 @@ class MultiArtist(Artist):
     def line_plot(self, *args, **kwargs):
         self.queue.append(Sketch(super().line_plot, args=args, kwargs=kwargs))
 
-    def show(
-        self,
-        ncols: int | None = 3,
-        nrows: int | None = None,
-        tight_layout: bool = True,
-    ) -> List[plt.Axes]:
+    @overload
+    def show(self, ncols: int, nrows: None, tight_layout: bool) -> List[plt.Axes]:
+        ...
+
+    @overload
+    def show(self, ncols: None, nrows: int, tight_layout: bool) -> List[plt.Axes]:
+        ...
+
+    def show(self, ncols=3, nrows=None, tight_layout=True):
         """Displays the grid plot.
         """
         there_can_be_only_one(ncols, nrows)
-        if ncols:
+        if nrows is None:
             nrows = ceil(len(self) / ncols)
-        else:
+        elif ncols is None:
             ncols = ceil(len(self) / nrows)
-        figsize: Tuple[int, int] = self.colony.get_ax_figsize(ncols=ncols,
-                                                              nrows=nrows)
+        figsize: Tuple[float, float] = self.colony.get_ax_figsize(
+            ncols=ncols, nrows=nrows)
 
         _, axes = plt.subplots(ncols=ncols, nrows=nrows, figsize=figsize)
 

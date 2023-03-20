@@ -1,20 +1,21 @@
 from collections import namedtuple
 from enum import Enum, auto
 
+FontSize = namedtuple(
+    'FontSize',
+    ["title", "xlabel", "ylabel", "xticklabels", "yticklabels", "legend"],
+    defaults=(11,) * 6,  # type: ignore
+)
 
-_fontsize_fields = ["title", "xlabel", "ylabel", "xticklabels", "yticklabels", "legend"]
-FontSize = namedtuple('FontSize', _fontsize_fields,
-                      defaults=(11,) * len(_fontsize_fields))
 
-
-def validate_font_size(font_size: int | dict | FontSize) -> FontSize:
+def validate_font_size(font_size: float | dict | FontSize) -> FontSize:
     """Validates and returns a FontSize tuple.
     """
     if isinstance(font_size, FontSize):
-        return FontSize
+        return font_size
     if isinstance(font_size, dict):
         return FontSize(**font_size)
-    if isinstance(font_size, int):
+    if isinstance(font_size, float):
         return FontSize(*((font_size,) * len(FontSize._fields)))
     raise ValueError(
         f"Font size of type {type(font_size)} "
@@ -23,9 +24,11 @@ def validate_font_size(font_size: int | dict | FontSize) -> FontSize:
     )
 
 
-_despine_fields = ['top', 'left', 'bottom', 'right']
-Despine = namedtuple('Despine', _despine_fields,
-                     defaults=(True, False, False, True))
+Despine = namedtuple(
+    'Despine',
+    ['top', 'left', 'bottom', 'right'],
+    defaults=(True, False, False, True),
+)
 
 
 def validate_despine(despine: bool | str | dict | Despine) -> Despine:

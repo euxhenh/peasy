@@ -46,21 +46,23 @@ class Colony:
     def __init__(
         self,
         *,
-        ax_figsize: int | Tuple[int, int] = (5, 5),
-        font_size: int | dict | FontSize = 11,
+        ax_figsize: float | Tuple[float, float] = (5, 5),
+        font_size: float | dict | FontSize = 11,
         despine: bool | str | dict | Despine = 'tr',
+        spine_weight: float | None = None,
         cmap: str | Cmap = Cmap.COZY,
         markers: str | List[str] | Marker = Marker.SIMPLE,
     ):
         self.ax_figsize = ax_figsize
         self.font_size: FontSize = validate_font_size(font_size)
         self.despine: Despine = validate_despine(despine)
+        self.spine_weight = spine_weight
         self.cmap = cmap
         self.markers = markers
 
     @property
     def ax_aspect_equal(self) -> bool:
-        return isinstance(self.ax_figsize, int)
+        return isinstance(self.ax_figsize, float)
 
     def get_artist(self, multi: bool = False) -> Artist | MultiArtist:
         """Returns an artist or multiartist for drawing figures.
@@ -68,13 +70,13 @@ class Colony:
         artist = Artist(colony=self) if not multi else MultiArtist(colony=self)
         return artist
 
-    def get_ax_figsize(self, *, nrows: int = 1, ncols: int = 1) -> Tuple[int, int]:
+    def get_ax_figsize(self, *, nrows: int = 1, ncols: int = 1) -> Tuple[float, float]:
         """Returns the figure size for the given number of rows and
         columns.
         """
         if self.ax_aspect_equal:
-            return (ncols * self.ax_figsize, nrows * self.ax_figsize)
-        w, h = self.ax_figsize
+            return (ncols * self.ax_figsize, nrows * self.ax_figsize)  # type: ignore
+        w, h = self.ax_figsize  # type: ignore
         return (ncols * w, nrows * h)
 
     def prettify_axis(self, ax: plt.Axes) -> None:
@@ -84,3 +86,5 @@ class Colony:
             # Special case when we want a perfect square plot
             ax.set_aspect('equal', adjustable='box')
         sns.despine(ax=ax, **self.despine._asdict())
+        if self.spine_weight:
+            plt.setp(ax.spines.values(), linewidth=self.spine_weight)
