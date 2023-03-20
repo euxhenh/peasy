@@ -1,7 +1,17 @@
 from typing import List, Tuple
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 from ._artist import Artist, MultiArtist
-from ._params import Cmap, Marker, FontSize, Spine
+from ._params import (
+    Cmap,
+    Despine,
+    FontSize,
+    Marker,
+    validate_despine,
+    validate_font_size,
+)
 
 
 class Colony:
@@ -16,15 +26,15 @@ class Colony:
     ax_figsize: int | Tuple[int, int]
         The figure size to use for a single axis. If drawing a grid, then
         each subplot will have this figure size. If single int, will return
-        a square figure.
+        a square figure. Format: (width, height).
     font_size: int | dict | FontSize
         If int, will set a global size for all fonts. If dict, must
         have the same keys that FontSize has.
-    spine: bool | str | dict | Spine
-        If True, will enable all four spines. If False, will disable all
+    despine: bool | str | dict | Despine
+        If True, will remove all four spines. If False, will keep all
         four spines. If str, can contain any of the characters t, l, b, r
         for top, left, bottom, right, respectively, for the spines you wish
-        to keep. If dict, must have the same keys as Spine.
+        to remove. If dict, must have the same keys as Despine.
     cmap: str | Cmap
         If str, should be the lowercase version of a CMAP colorscheme.
     markers: str | List[str] | Marker
@@ -36,17 +46,21 @@ class Colony:
     def __init__(
         self,
         *,
-        ax_figsize: int | Tuple[int, int] = (6, 6),
-        font_size: int | dict | FontSize = 12,
-        spine: bool | str | dict | Spine = 'lb',
+        ax_figsize: int | Tuple[int, int] = (5, 5),
+        font_size: int | dict | FontSize = 11,
+        despine: bool | str | dict | Despine = 'tr',
         cmap: str | Cmap = Cmap.COZY,
         markers: str | List[str] | Marker = Marker.SIMPLE,
     ):
         self.ax_figsize = ax_figsize
-        self.font_size = font_size
-        self.spine = spine
+        self.font_size: FontSize = validate_font_size(font_size)
+        self.despine: Despine = validate_despine(despine)
         self.cmap = cmap
         self.markers = markers
+
+    @property
+    def ax_aspect_equal(self) -> bool:
+        return isinstance(self.ax_figsize, int)
 
     def get_artist(self, multi: bool = False) -> Artist | MultiArtist:
         """Returns an artist or multiartist for drawing figures.
@@ -58,7 +72,15 @@ class Colony:
         """Returns the figure size for the given number of rows and
         columns.
         """
-        if isinstance(self.ax_figsize, int):
+        if self.ax_aspect_equal:
             return (ncols * self.ax_figsize, nrows * self.ax_figsize)
         w, h = self.ax_figsize
-        return (ncols * h, nrows * w)
+        return (ncols * w, nrows * h)
+
+    def prettify_axis(self, ax: plt.Axes) -> None:
+        """Applies all decorations to axis.
+        """
+        if self.ax_aspect_equal:
+            # Special case when we want a perfect square plot
+            ax.set_aspect('equal', adjustable='box')
+        sns.despine(ax=ax, **self.despine._asdict())
