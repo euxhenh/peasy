@@ -64,7 +64,7 @@ class Colony:
     def ax_aspect_equal(self) -> bool:
         return isinstance(self.ax_figsize, float)
 
-    def get_artist(self, multi: bool = False) -> Artist | MultiArtist:
+    def new_artist(self, multi: bool = False) -> Artist | MultiArtist:
         """Returns an artist or multiartist for drawing figures.
         """
         artist = Artist(colony=self) if not multi else MultiArtist(colony=self)
@@ -88,3 +88,26 @@ class Colony:
         sns.despine(ax=ax, **self.despine._asdict())
         if self.spine_weight:
             plt.setp(ax.spines.values(), linewidth=self.spine_weight)
+
+    def write_on(
+        self,
+        ax: plt.Axes,
+        /,
+        title: str | None = None,
+        xlabel: str | None = None,
+        ylabel: str | None = None,
+        legend: bool = True,
+    ) -> None:
+        """Adds text to axes.
+        """
+        if title:
+            ax.set_title(title, fontsize=self.font_size.title)
+        if xlabel:
+            ax.set_xlabel(xlabel, fontsize=self.font_size.xlabel)
+        if ylabel:
+            ax.set_ylabel(ylabel, fontsize=self.font_size.ylabel)
+        ax.tick_params(axis='x', labelsize=self.font_size.xticklabels)
+        ax.tick_params(axis='y', labelsize=self.font_size.yticklabels)
+        # Only show legend if there are any labels == this list is nonempty
+        if legend and ax.get_legend_handles_labels()[0]:
+            ax.legend(prop={'size': self.font_size.legend})

@@ -8,3 +8,13 @@ def there_can_be_only_one(*args):
     if sum(is_true) != 1:
         raise ValueError("Exactly one param should be set.")
     return list(compress(args, is_true))[0]
+
+
+def consistent_length(*args):
+    """Ensures that all args have the same length.
+    """
+    lens = [len(arg) for arg in args if arg is not None]
+    if len(set(lens)) > 1:
+        raise ValueError(
+            f"Found objects of incosistent lengths: {lens}."
+        )

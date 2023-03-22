@@ -15,7 +15,7 @@ def validate_font_size(font_size: float | dict | FontSize) -> FontSize:
         return font_size
     if isinstance(font_size, dict):
         return FontSize(**font_size)
-    if isinstance(font_size, float):
+    if isinstance(font_size, (float | int)):
         return FontSize(*((font_size,) * len(FontSize._fields)))
     raise ValueError(
         f"Font size of type {type(font_size)} "

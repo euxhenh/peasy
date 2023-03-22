@@ -1,24 +1,26 @@
 from __future__ import annotations
 
-from abc import ABC
+import logging
 from collections import namedtuple
 from itertools import zip_longest
 from math import ceil
 from typing import TYPE_CHECKING, List, Tuple, overload
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from ._validation import there_can_be_only_one
-from .functional import line_plot
+from .functional import Line, line_plot
 
 if TYPE_CHECKING:
     from ._colony import Colony
 
+logger = logging.getLogger(__name__)
 
 Sketch = namedtuple('Sketch', ['fn', 'args', 'kwargs'])
 
 
-class Artist(ABC):
+class Artist:
     """A base artist class containing most plotting funtions.
     """
 
@@ -26,7 +28,7 @@ class Artist(ABC):
         self.colony = colony
 
     @staticmethod
-    def _extract_text(**kwargs):
+    def _extract_axes_text(**kwargs):
         text_kwargs = {}
         text_kwargs['title'] = kwargs.pop('title', None)
         text_kwargs['xlabel'] = kwargs.pop('xlabel', None)
@@ -34,37 +36,19 @@ class Artist(ABC):
         text_kwargs['legend'] = kwargs.pop('legend', True)
         return text_kwargs, kwargs
 
-    def _write_on(
+    def line_plot(
         self,
-        ax: plt.Axes,
-        /,
-        title: str | None = None,
-        xlabel: str | None = None,
-        ylabel: str | None = None,
-        legend: bool = True,
-    ) -> None:
-        """Adds text to axes.
-        """
-        if title:
-            ax.set_title(title, fontsize=self.colony.font_size.title)
-        if xlabel:
-            ax.set_xlabel(xlabel, fontsize=self.colony.font_size.xlabel)
-        if ylabel:
-            ax.set_xlabel(ylabel, fontsize=self.colony.font_size.ylabel)
-        ax.tick_params(axis='x', labelsize=self.colony.font_size.xticklabels)
-        ax.tick_params(axis='y', labelsize=self.colony.font_size.yticklabels)
-        # Only show legend if there are any labels == this list is nonempty
-        if legend and ax.get_legend_handles_labels()[0]:
-            ax.legend(prop={'size': self.colony.font_size.legend})
-
-    def line_plot(self, x, y, ax: plt.Axes | None = None, **kwargs) -> plt.Axes:
+        x: Line | List | np.ndarray,
+        y: List | np.ndarray | None = None,
+        ax: plt.Axes | None = None,
+        **kwargs
+    ) -> plt.Axes:
         """A simple line plot (or multiple lines).
+        kwargs may have any of the keys in [title, xlabel, ylabel, legend].
         """
-        text_kwargs, kwargs = self._extract_text(**kwargs)
-        if ax is None:
-            _, ax = plt.subplots()
-        line_plot(x=x, y=y, ax=ax)
-        self._write_on(ax, **text_kwargs)
+        text_kwargs, kwargs = self._extract_axes_text(**kwargs)
+        line_plot(x, y, ax=ax, **kwargs)
+        self.colony.write_on(ax, **text_kwargs)
 
         return ax
 
@@ -86,7 +70,7 @@ class MultiArtist(Artist):
     def __len__(self) -> int:
         return len(self.queue)
 
-    def clear_queue(self) -> None:
+    def clear(self) -> None:
         """Clears all elements from the queue.
         """
         self.queue.clear()
@@ -107,21 +91,29 @@ class MultiArtist(Artist):
         """
         there_can_be_only_one(ncols, nrows)
         if nrows is None:
+            ncols = min(ncols, len(self))  # In case we have less plots
             nrows = ceil(len(self) / ncols)
         elif ncols is None:
+            nrows = min(nrows, len(self))
             ncols = ceil(len(self) / nrows)
         figsize: Tuple[float, float] = self.colony.get_ax_figsize(
             ncols=ncols, nrows=nrows)
 
         _, axes = plt.subplots(ncols=ncols, nrows=nrows, figsize=figsize)
 
-        for sketch, ax in zip_longest(self.queue, axes.flat):
+        for i, (sketch, ax) in enumerate(zip_longest(self.queue, axes.flat)):
             # Remove axis if we ran out of sketches
             if sketch is None:
                 ax.remove()
                 continue
             fn, args, kwargs = sketch
-            fn(*args, ax=ax, **kwargs)
+
+            try:
+                fn(*args, ax=ax, **kwargs)
+            except Exception as e:
+                logger.error(f"Exception raised from Plot #{i}.")
+                raise e
+
             self.colony.prettify_axis(ax)
 
         if tight_layout:
