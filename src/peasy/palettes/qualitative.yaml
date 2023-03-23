@@ -1,25 +1,40 @@
 COZY: Set2
 
 CHERRY_PIE:
-  - "#d81159"
-  - "#ffbc42"
+  - "#D81159"
+  - "#FFBC42"
   - "#218380"
-  - "#73d2de"
-  - "#8f2d56"
+  - "#73D2DE"
+  - "#8F2D56"
 
 VINTAGE:
-  - "#e07a5f"
-  - "#81b29a"
-  - "#3d405b"
-  - "#f2cc8f"
-  - "#c9ada7"
+  - "#E07A5F"
+  - "#81B29A"
+  - "#3D405B"
+  - "#F2CC8F"
+  - "#C9ADA7"
 
 WARPPED:
-  - "AACF86"
-  - "DF6B6B"
-  - "008891"
-  - "F0AC6E"
-  - "614E85"
+  - "#AACF86"
+  - "#DF6B6B"
+  - "#008891"
+  - "#F0AC6E"
+  - "#614E85"
+
+OFFICE:
+  - "#F4A549"
+  - "#8B275D"
+  - "#AD9D97"
+  - "#DFCBA6"
+  - "#63A597"
+  - "#4C3E3E"
+
+MONOCHROME:
+  - "#FFCDB2"
+  - "#FFB4A2"
+  - "#E5989B"
+  - "#B5838D"
+  - "#6D6875"
 
 GIVE_ME_ALL:
   - "#66C2A5"

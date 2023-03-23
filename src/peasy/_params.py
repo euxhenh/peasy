@@ -1,5 +1,18 @@
+import pathlib
 from collections import namedtuple
+from dataclasses import dataclass, field
 from enum import Enum, auto
+from typing import List
+
+import seaborn as sns
+import yaml
+
+from ._bubbles import InfList
+from ._palettes import Palette
+from ._validation import there_should_be_at_least_one
+
+path = pathlib.Path(__file__).parent.resolve()
+Q_PALETTES = yaml.safe_load(open(path / "palettes/qualitative.yaml", "r"))
 
 FontSize = namedtuple(
     'FontSize',
@@ -57,15 +70,145 @@ def validate_despine(despine: bool | str | dict | Despine) -> Despine:
     )
 
 
-class Cmap(Enum):
+class _Cmap(Enum):
+    def _generate_next_value_(name, *args):
+        return Palette(Q_PALETTES[name])
+
+
+class Cmap(_Cmap):
     COZY = auto()
-    OFFICIAL = auto()
-    BW = auto()
+    CHERRY_PIE = auto()
+    VINTAGE = auto()
+    WARPPED = auto()
+    OFFICE = auto()
     MONOCHROME = auto()
+    GIVE_ME_ALL = auto()
+
+
+def validate_cmap(cmap: str | Cmap) -> Palette:
+    """Validates a string or list and returns a Palette.
+    """
+    if isinstance(cmap, Cmap):
+        return cmap.value
+
+    if not isinstance(cmap, str):
+        raise ValueError(
+            "Expected a colormap of type str, but "
+            f"found type {type(cmap)}."
+        )
+
+    try:
+        pal = Q_PALETTES[cmap.upper()]
+    except Exception:  # Check seaborn if not found in peasy.
+        pal = sns.color_palette(cmap).as_hex()
+
+    return Palette(pal)
+
+
+def validate_palette_or_cmap(
+    palette: List[str] | Palette | None = None,
+    cmap: str | Cmap | None = None,
+) -> Palette:
+    """Validates either a palette or cmap."""
+    there_should_be_at_least_one(palette, cmap)
+    if isinstance(palette, Palette):
+        return palette
+    return (
+        Palette(palette) if palette is not None
+        else validate_cmap(cmap)  # type: ignore
+    )
+
+
+@dataclass
+class Legend:
+    loc: int | str = 'r'
+    outside: bool | str = 'auto'
+    # Threshold to determine the bool value of outside='auto'
+    # (True if >= thresh)
+    auto_thresh: int = 5
+    # Additional kwargs to pass to ax.legend
+    kwargs: dict = field(default_factory=dict)
+    loc_plt: field(init=False) = None
+
+    def __post_init__(self):
+        self.kwargs.pop('loc', None)
+        self.kwargs.setdefault('frameon', False)
+
+        if self.outside and self.loc not in ['r', 'l', 'b', 't']:
+            raise ValueError(
+                "Outside legend is only supported "
+                "for loc in ['r', 'l', 'b', 't']."
+            )
+
+        cov = {'r': 'center right', 'l': 'center left',
+               'b': 'lower center', 't': 'upper center'}
+        self.loc_plt = cov.get(self.loc, self.loc)
+
+
+def validate_legend(legend: dict | Legend | None) -> Legend:
+    """Validate and return a Legend."""
+    if legend is None:  # use defaults
+        return Legend()
+    if isinstance(legend, dict):
+        return Legend(**legend)
+    if isinstance(Legend):
+        return legend
+    raise ValueError(
+        f"Legend of type {type(legend)} not understood."
+    )
+
+
+class LineStyle(Enum):
+    NONE = None
+    DUO = InfList(['-.', ':'])
+    TRIO = InfList(['--', '-.', ':'])
+    DIVERSE = InfList(['-', '--', '-.', ':', (0, (3, 2, 1, 2, 1, 2))])
+    DASHDOT = InfList([(0, (4, 2, 1, 2, *((1, 2) * i))) for i in range(5)])
+    LONG_DASHDOT = InfList([(0, (7, 2, 1, 2, *((1, 2) * i))) for i in range(5)])
+
+
+def validate_linestyle(
+    linestyle: str | List[str] | InfList | LineStyle | None,
+) -> InfList | None:
+    """Validates and returns an InfList."""
+    if linestyle is None:
+        return None
+    if isinstance(linestyle, InfList):
+        return linestyle
+    if isinstance(linestyle, LineStyle):
+        return linestyle.value
+    if isinstance(linestyle, str):
+        return getattr(LineStyle, linestyle.upper()).value
+    if isinstance(linestyle, list):
+        return InfList(linestyle)
+    raise ValueError(
+        f"`linestyle` of type {type(linestyle)} "
+        "not understood."
+    )
 
 
 class Marker(Enum):
-    NONE = auto()
-    SIMPLE = auto()
-    DISTANT = auto()
-    SHAPES = auto()
+    NONE = None
+    DUO = InfList(['o', '>'])
+    TRIO = InfList(['o', '>', 's'])
+    DIVERSE = InfList(['o', '>', 's', 'x', '.', 'd'])
+
+
+def validate_marker(
+    marker: str | List[str] | InfList | Marker | None
+) -> InfList | None:
+    """Validates and returns an InfList."""
+    if marker is None:
+        return None
+    if isinstance(marker, InfList):
+        return marker
+    if isinstance(marker, Marker):
+        return marker.value
+    if isinstance(marker, str):
+        return getattr(Marker, marker.upper()).value
+    if isinstance(marker, list):
+        return InfList(marker)
+    raise ValueError(
+        f"`marker` of type {type(marker)} "
+        "not understood."
+    )

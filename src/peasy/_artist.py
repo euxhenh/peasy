@@ -4,6 +4,7 @@ import logging
 from collections import namedtuple
 from itertools import zip_longest
 from math import ceil
+from numbers import Number
 from typing import TYPE_CHECKING, List, Tuple, overload
 
 import matplotlib.pyplot as plt
@@ -20,11 +21,25 @@ logger = logging.getLogger(__name__)
 Sketch = namedtuple('Sketch', ['fn', 'args', 'kwargs'])
 
 
+def prettify_axis(fn):
+    """A decorator that applies axis post-prep on end."""
+
+    def _inner(self, *args, ax: plt.Axes | None = None, **kwargs):
+        text_kwargs, kwargs = Artist._extract_axes_text(**kwargs)
+        ax = fn(self, *args, ax=ax, **kwargs)
+        # Post-prep
+        self.colony.write_on(ax, **text_kwargs)
+        self.colony.prettify_axis(ax)
+        return ax
+
+    return _inner
+
+
 class Artist:
     """A base artist class containing most plotting funtions.
     """
 
-    def __init__(self, *, colony: Colony):
+    def __init__(self, colony: Colony):
         self.colony = colony
 
     @staticmethod
@@ -33,9 +48,9 @@ class Artist:
         text_kwargs['title'] = kwargs.pop('title', None)
         text_kwargs['xlabel'] = kwargs.pop('xlabel', None)
         text_kwargs['ylabel'] = kwargs.pop('ylabel', None)
-        text_kwargs['legend'] = kwargs.pop('legend', True)
         return text_kwargs, kwargs
 
+    @prettify_axis
     def line_plot(
         self,
         x: Line | List | np.ndarray,
@@ -44,11 +59,13 @@ class Artist:
         **kwargs
     ) -> plt.Axes:
         """A simple line plot (or multiple lines).
-        kwargs may have any of the keys in [title, xlabel, ylabel, legend].
         """
-        text_kwargs, kwargs = self._extract_axes_text(**kwargs)
-        line_plot(x, y, ax=ax, **kwargs)
-        self.colony.write_on(ax, **text_kwargs)
+        # Set defaults for these
+        kwargs.setdefault('color', self.colony.palette)
+        kwargs.setdefault('linestyle', self.colony.linestyle)
+        kwargs.setdefault('marker', self.colony.marker)
+
+        ax = line_plot(x, y, ax=ax, **kwargs)
 
         return ax
 
@@ -86,7 +103,7 @@ class MultiArtist(Artist):
     def show(self, ncols: None, nrows: int, tight_layout: bool) -> List[plt.Axes]:
         ...
 
-    def show(self, ncols=3, nrows=None, tight_layout=True):
+    def show(self, ncols=3, nrows=None, tight_layout=True, **kwargs):
         """Displays the grid plot.
         """
         there_can_be_only_one(ncols, nrows)
@@ -96,25 +113,26 @@ class MultiArtist(Artist):
         elif ncols is None:
             nrows = min(nrows, len(self))
             ncols = ceil(len(self) / nrows)
-        figsize: Tuple[float, float] = self.colony.get_ax_figsize(
+        figsize: Tuple[Number, Number] = self.colony.get_ax_figsize(
             ncols=ncols, nrows=nrows)
 
-        _, axes = plt.subplots(ncols=ncols, nrows=nrows, figsize=figsize)
+        _, axes = plt.subplots(ncols=ncols, nrows=nrows, figsize=figsize, **kwargs)
+        if ncols == nrows == 1:
+            axes = [axes]  # For the for loop
 
         for i, (sketch, ax) in enumerate(zip_longest(self.queue, axes.flat)):
             # Remove axis if we ran out of sketches
             if sketch is None:
                 ax.remove()
                 continue
-            fn, args, kwargs = sketch
-
+            fn, args, ax_kwargs = sketch
+            if 'ax' in ax_kwargs:
+                raise ValueError("Cannot pass `ax` to a MultiArtist.")
             try:
-                fn(*args, ax=ax, **kwargs)
+                fn(*args, ax=ax, **ax_kwargs)
             except Exception as e:
                 logger.error(f"Exception raised from Plot #{i}.")
                 raise e
-
-            self.colony.prettify_axis(ax)
 
         if tight_layout:
             plt.tight_layout()
