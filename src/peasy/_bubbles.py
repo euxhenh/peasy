@@ -15,7 +15,7 @@ def default_index(x, expected_type, idx):
     return x[idx] if isinstance(x, expected_type) else x
 
 
-def default_list(x, expected_type, n):
+def default_range(x, expected_type, n):
     """If x is of expected_type, return x[0:n], otherwise x."""
     return [x[i] for i in range(n)] if isinstance(x, expected_type) else x
 

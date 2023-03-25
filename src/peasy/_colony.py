@@ -1,11 +1,11 @@
 import logging
-from numbers import Number
 from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 from ._artist import Artist, MultiArtist
+from ._custom_typing import Number
 from ._palettes import Palette
 from ._params import (
     Cmap,
@@ -13,16 +13,20 @@ from ._params import (
     FontSize,
     Legend,
     LineStyle,
+    LineStyleList,
     Marker,
+    MarkerList,
     validate_despine,
     validate_font_size,
     validate_legend,
     validate_linestyle,
     validate_marker,
-    validate_palette_or_cmap,
+    validate_palette,
 )
 
 logger = logging.getLogger(__name__)
+
+__all__ = ['Colony']
 
 
 class Colony:
@@ -50,8 +54,8 @@ class Colony:
         The width in pixels of the spine axis.
     palette: List[str]
         A list of colors in hex. Takes precedence over cmap.
-    cmap: str | Cmap
-        If str, should be the lowercase version of a CMAP colorscheme.
+    discrete_cmap: str | DCmap
+        If str, should be the lowercase version of a DCmap colorscheme.
     legend: dict | Legend
         Legend options.
     linestyle: str | List[str] | LineStyle
@@ -66,27 +70,26 @@ class Colony:
     def __init__(
         self,
         *,
-        ax_figsize: Number | Tuple[Number, Number] = 5,
+        ax_figsize: Number | Tuple[Number, Number] = (5, 5),
         font_size: Number | dict[str, Number] | FontSize = 11,
         despine: bool | str | dict[str, str] | Despine = 'tr',
-        palette: List[str] | Palette | None = None,
-        cmap: str | Cmap | None = Cmap.OFFICE,
+        palette: str | List[str] | Palette | Cmap = Cmap.OFFICE,
         legend: dict | Legend | None = None,
         linestyle: str | List[str] | LineStyle | None = LineStyle.NONE,
         marker: str | List[str] | Marker | None = Marker.NONE,
         spine_weight: Number | None = None,
     ):
         self.ax_figsize: Tuple[Number, Number] = (
-            (ax_figsize, ax_figsize) if isinstance(ax_figsize, Number)
+            (ax_figsize, ax_figsize) if isinstance(ax_figsize, (int, float))
             else ax_figsize
         )
         self.font_size: FontSize = validate_font_size(font_size)
         self.despine: Despine = validate_despine(despine)
-        self.palette: Palette = validate_palette_or_cmap(palette, cmap)
+        self.palette: Palette = validate_palette(palette)
         self.legend: Legend = validate_legend(legend)
-        self.linestyle = validate_linestyle(linestyle)
-        self.marker = validate_marker(marker)
-        self.spine_weight: Number = spine_weight
+        self.linestyle: LineStyleList | None = validate_linestyle(linestyle)
+        self.marker: MarkerList | None = validate_marker(marker)
+        self.spine_weight: Number | None = spine_weight
 
     @property
     def ax_aspect_equal(self) -> bool:
@@ -115,7 +118,7 @@ class Colony:
         if legend.outside == 'auto':
             outside = True if n_labels >= legend.auto_thresh else False
         else:
-            outside = legend.outside
+            outside = bool(legend.outside)
 
         if not outside:
             ax.legend(loc=legend.loc_plt, **legend.kwargs)
@@ -130,7 +133,8 @@ class Colony:
             if legend.loc in ['t', 'b']:
                 kwargs.setdefault('ncol', n_labels)  # Horizontal legend
 
-            loc, bbox_to_anchor = pdict[legend.loc]
+            # We are sure legend.loc is in [r, l, t, b] here.
+            loc, bbox_to_anchor = pdict[legend.loc]  # type: ignore
             ax.legend(loc=loc, bbox_to_anchor=bbox_to_anchor,
                       prop={'size': self.font_size.legend}, **kwargs)
 

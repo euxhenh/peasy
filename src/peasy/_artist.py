@@ -4,14 +4,13 @@ import logging
 from collections import namedtuple
 from itertools import zip_longest
 from math import ceil
-from numbers import Number
-from typing import TYPE_CHECKING, List, Tuple, overload
+from typing import TYPE_CHECKING, List, overload
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from ._validation import there_can_be_only_one
-from .functional import Line, line_plot
+from .functional import line_plot
 
 if TYPE_CHECKING:
     from ._colony import Colony
@@ -22,7 +21,7 @@ Sketch = namedtuple('Sketch', ['fn', 'args', 'kwargs'])
 
 
 def prettify_axis(fn):
-    """A decorator that applies axis post-prep on end."""
+    """A decorator that applies axis prep on end."""
 
     def _inner(self, *args, ax: plt.Axes | None = None, **kwargs):
         text_kwargs, kwargs = Artist._extract_axes_text(**kwargs)
@@ -53,7 +52,7 @@ class Artist:
     @prettify_axis
     def line_plot(
         self,
-        x: Line | List | np.ndarray,
+        x: List | np.ndarray,
         y: List | np.ndarray | None = None,
         ax: plt.Axes | None = None,
         **kwargs
@@ -67,6 +66,12 @@ class Artist:
 
         ax = line_plot(x, y, ax=ax, **kwargs)
 
+        return ax
+
+    @prettify_axis
+    def sketch(self, fn, /, *args, **kwargs):
+        """For any other plotting fn, such as from seaborn."""
+        ax = fn(*args, **kwargs)
         return ax
 
 
@@ -95,6 +100,10 @@ class MultiArtist(Artist):
     def line_plot(self, *args, **kwargs):
         self.queue.append(Sketch(super().line_plot, args=args, kwargs=kwargs))
 
+    def sketch(self, *args, **kwargs):
+        """For any other plotting fn, such as from seaborn."""
+        self.queue.append(Sketch(super().sketch, args=args, kwargs=kwargs))
+
     @overload
     def show(self, ncols: int, nrows: None, tight_layout: bool) -> List[plt.Axes]:
         ...
@@ -113,10 +122,12 @@ class MultiArtist(Artist):
         elif ncols is None:
             nrows = min(nrows, len(self))
             ncols = ceil(len(self) / nrows)
-        figsize: Tuple[Number, Number] = self.colony.get_ax_figsize(
-            ncols=ncols, nrows=nrows)
+        kwargs['ncols'] = ncols
+        kwargs['nrows'] = nrows
+        kwargs['figsize'] = self.colony.get_ax_figsize(nrows=nrows, ncols=ncols)
 
-        _, axes = plt.subplots(ncols=ncols, nrows=nrows, figsize=figsize, **kwargs)
+        _, axes = plt.subplots(**kwargs)
+
         if ncols == nrows == 1:
             axes = [axes]  # For the for loop
 

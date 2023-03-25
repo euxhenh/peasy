@@ -1,5 +1,5 @@
-from . import functional as F
-from ._artist import *
-from ._colony import *
-from ._palettes import *
-from ._params import *
+from . import functional as F  # noqa
+from ._artist import *  # noqa
+from ._colony import *  # noqa
+from ._palettes import *  # noqa
+from ._params import *  # noqa

@@ -1,49 +1,49 @@
-from collections import namedtuple
 from itertools import zip_longest
-from typing import List, Literal
+from typing import List, Literal, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .._bubbles import InfList, default, default_index, default_list
+from .._bubbles import InfList, default, default_index, default_range
 from .._palettes import Palette
-from .._validation import consistent_length, there_can_be_none
+from .._params import LineStyleList, MarkerList
+from .._validation import consistent_length
 
-Line = namedtuple(
-    'Line',
-    ["x", "y", "label"],
-    defaults=(None, None, None),
-)
+__all__ = ['line_plot']
 
 
 def _line_plot(
     ax, x, y=None, label=None, color=None,
-    linestyle=None, marker=None, **kwargs,
+    linestyle=None, marker=None, shade=None,
+    shade_alpha=None, **kwargs,
 ):
     """Helper function that checks if x in a Line.
     """
-    if isinstance(x, Line):
-        there_can_be_none(y, label)
-        x, y, label = x
-
     line_no = len(ax.lines)
-    color = default_index(color, Palette, line_no)
+    if isinstance(color, Palette):
+        color = color.d_pal[line_no]  # Use discrete palette
     linestyle = default_index(linestyle, InfList, line_no)
     marker = default_index(marker, InfList, line_no)
 
     args = (x,) if y is None else (x, y)
     ax.plot(*args, label=label, color=color,
             linestyle=linestyle, marker=marker, **kwargs)
+    if shade is not None:
+        xcoord = args[0] if len(args) == 2 else np.arange(len(args[0]))
+        consistent_length(shade[0], shade[1], xcoord)
+        ax.fill_between(xcoord, shade[0], shade[1], color=color, alpha=shade_alpha)
 
 
 def line_plot(
-    x: Line | List | np.ndarray,
+    x: List | np.ndarray,
     y: List | np.ndarray | None = None,
     /,
     label: str | List[str] | None = None,
     color: str | Palette | None = None,
-    linestyle: str | InfList | None = None,
-    marker: str | InfList | None = None,
+    linestyle: str | LineStyleList | None = None,
+    marker: str | MarkerList | None = None,
+    shade: Tuple[List, List] | Tuple[np.ndarray, np.ndarray] | None = None,
+    shade_alpha: float = 0.2,
     *,
     ax: plt.Axes | None = None,
     ndim: Literal[1] | Literal[2] = 1,
@@ -73,33 +73,42 @@ def line_plot(
     """
     if ndim not in [1, 2]:
         raise ValueError("Only 1D and 2D arrays are supported.")
-    for param, name in zip([label, color, linestyle, marker],
-                           ['label', 'color', 'linestyle', 'marker']):
-        if isinstance(param, str) and ndim > 1:
-            raise ValueError(
-                f"Parameter `{name}` cannot be a "
-                "string if plotting 2D arrays."
-            )
+
+    if ndim > 1:
+        for param, name in zip(
+            [label, color, linestyle, marker],
+            ['label', 'color', 'linestyle', 'marker'],
+        ):
+            if isinstance(param, str):
+                raise ValueError(
+                    f"Parameter `{name}` cannot be a "
+                    "string if plotting 2D arrays."
+                )
 
     if ax is None:
-        _, ax = plt.subplots()
+        ax = plt.gca()
+
+    kwargs['shade_alpha'] = shade_alpha
 
     if ndim == 1:
-        _line_plot(ax, x, y, label, color, linestyle, marker, **kwargs)
+        _line_plot(ax=ax, x=x, y=y, label=label, color=color,
+                   linestyle=linestyle, marker=marker, shade=shade,
+                   **kwargs)
         return ax
 
     # ndim == 2 now
     n = len(x)
-    color = default_list(color, Palette, n)
-    linestyle = default_list(linestyle, InfList, n)
-    marker = default_list(marker, InfList, n)
+    if isinstance(color, Palette):
+        color = color(np.arange(n))
+    linestyle = default_range(linestyle, InfList, n)
+    marker = default_range(marker, InfList, n)
 
     consistent_length(x, y, label, color, linestyle, marker)
     # This should follow the same order of arguments as in the declaration
     # of this function
     to_iter = (
         x, default(y), default(label), default(color),
-        default(linestyle), default(marker)
+        default(linestyle), default(marker), zip(*default(shade)),
     )
     for args in zip_longest(*to_iter):
         line_plot(*args, ax=ax, ndim=1, **kwargs)

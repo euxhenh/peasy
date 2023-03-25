@@ -1,1 +1,1 @@
-from ._line import Line, line_plot
+from ._line import *  # noqa
