@@ -92,13 +92,13 @@ class Palette:
 
     def __init__(
         self,
-        pal: List[str] | None = None,
         d_pal: DiscretePalette | None = None,
         c_pal: ContinuousPalette | ListedColormap | None = None,
+        pal: List[str] | None = None,
         d_n: int = 12,
         c_n: int = 256,
     ):
-        there_should_be_at_least_one(pal, d_pal, c_pal)
+        there_should_be_at_least_one(d_pal, c_pal, pal)
 
         if c_pal is not None and isinstance(c_pal, ListedColormap):
             c_pal = ContinuousPalette(c_pal)

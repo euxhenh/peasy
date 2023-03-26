@@ -159,10 +159,14 @@ class Colony:
         """Adds text to axes.
         """
         if title:
-            ax.set_title(title, fontsize=self.font_size.title)
+            ax.set_title(title)
         if xlabel:
-            ax.set_xlabel(xlabel, fontsize=self.font_size.xlabel)
+            ax.set_xlabel(xlabel)
         if ylabel:
-            ax.set_ylabel(ylabel, fontsize=self.font_size.ylabel)
+            ax.set_ylabel(ylabel)
+        # Set sizes after creation in case we used sns fn's
+        ax.xaxis.label.set_size(self.font_size.xlabel)
+        ax.yaxis.label.set_size(self.font_size.ylabel)
+        ax.title.set_size(self.font_size.title)
         ax.tick_params(axis='x', labelsize=self.font_size.xticklabels)
         ax.tick_params(axis='y', labelsize=self.font_size.yticklabels)

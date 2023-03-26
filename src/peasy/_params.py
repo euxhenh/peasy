@@ -1,7 +1,6 @@
 import pathlib
 from collections import namedtuple
 from dataclasses import dataclass, field
-from enum import Enum, auto
 from typing import List, TypeAlias
 
 import seaborn as sns
@@ -75,31 +74,25 @@ def validate_despine(despine: bool | str | dict | Despine) -> Despine:
     )
 
 
-def _get_palette(name, discrete: bool = False):
+def _get_palette(name: str) -> Palette:
     """Parses palette."""
-    palettes = D_PALETTES if discrete else C_PALETTES
-    pal: str | List[str] = palettes[name]
-    if isinstance(pal, str):  # Check seaborn
-        pal = sns.color_palette(pal, as_cmap=False).as_hex()
-    return DiscretePalette(pal) if discrete else ContinuousPalette(pal)
+    pals = []
+    for palette in [D_PALETTES, C_PALETTES]:
+        pal: str | List[str] = palette[name]
+        if isinstance(pal, str):  # Check seaborn
+            pal = sns.color_palette(pal, as_cmap=False).as_hex()
+        pals.append(pal)
+    return Palette(d_pal=DiscretePalette(pals[0]), c_pal=ContinuousPalette(pals[1]))
 
 
-class _Cmap(Enum):
-    def _generate_next_value_(name, *args):
-        return Palette(
-            d_pal=_get_palette(name, True),
-            c_pal=_get_palette(name, False)
-        )
-
-
-class Cmap(_Cmap):
-    COZY = auto()
-    CHERRY_PIE = auto()
-    VINTAGE = auto()
-    WARPPED = auto()
-    OFFICE = auto()
-    MONOCHROME = auto()
-    GIVE_ME_ALL = auto()
+class Cmap:
+    COZY = _get_palette('COZY')
+    CHERRY = _get_palette('CHERRY')
+    VINTAGE = _get_palette('VINTAGE')
+    WARPPED = _get_palette('WARPPED')
+    OFFICE = _get_palette('OFFICE')
+    MONOCHROME = _get_palette('MONOCHROME')
+    GIVE_ME_ALL = _get_palette('GIVE_ME_ALL')
 
 
 def validate_cmap(cmap: str | Cmap) -> Palette:
@@ -173,7 +166,7 @@ def validate_legend(legend: dict | Legend | None) -> Legend:
 LineStyleList: TypeAlias = InfList
 
 
-class LineStyle(Enum):
+class LineStyle:
     NONE = None
     DUO = LineStyleList(['-', '--'])
     TRIO = LineStyleList(['-', '--', '-.'])
@@ -183,29 +176,24 @@ class LineStyle(Enum):
 
 
 def validate_linestyle(
-    linestyle: str | List[str] | InfList | LineStyle | None,
-) -> LineStyleList | None:
+    linestyle: str | List[str] | InfList | LineStyleList | None,
+) -> LineStyleList:
     """Validates and returns an InfList."""
     if linestyle is None:
-        return None
-    if isinstance(linestyle, InfList):
+        return LineStyle.NONE
+    if isinstance(linestyle, LineStyleList):
+        return linestyle
+    if isinstance(linestyle, (list, InfList)):
         return LineStyleList(linestyle)
-    if isinstance(linestyle, LineStyle):
-        return linestyle.value
     if isinstance(linestyle, str):
-        return getattr(LineStyle, linestyle.upper()).value
-    if isinstance(linestyle, list):
-        return LineStyleList(linestyle)
-    raise ValueError(
-        f"`linestyle` of type {type(linestyle)} "
-        "not understood."
-    )
+        return getattr(LineStyle, linestyle.upper())
+    raise ValueError(f"`linestyle` of type {type(linestyle)} not understood.")
 
 
 MarkerList: TypeAlias = InfList
 
 
-class Marker(Enum):
+class Marker:
     NONE = None
     DUO = MarkerList(['o', '>'])
     TRIO = MarkerList(['o', '>', 's'])
@@ -213,20 +201,15 @@ class Marker(Enum):
 
 
 def validate_marker(
-    marker: str | List[str] | InfList | Marker | None
-) -> MarkerList | None:
+    marker: str | List[str] | InfList | MarkerList | None
+) -> MarkerList:
     """Validates and returns an InfList."""
     if marker is None:
-        return None
-    if isinstance(marker, InfList):
+        return Marker.NONE
+    if isinstance(marker, MarkerList):
+        return marker
+    if isinstance(marker, (list, InfList)):
         return MarkerList(marker)
-    if isinstance(marker, Marker):
-        return marker.value
     if isinstance(marker, str):
-        return getattr(Marker, marker.upper()).value
-    if isinstance(marker, list):
-        return MarkerList(marker)
-    raise ValueError(
-        f"`marker` of type {type(marker)} "
-        "not understood."
-    )
+        return getattr(Marker, marker.upper())
+    raise ValueError(f"`marker` of type {type(marker)} not understood.")

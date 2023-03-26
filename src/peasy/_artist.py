@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import logging
 from collections import namedtuple
+from collections.abc import Iterable
 from itertools import zip_longest
 from math import ceil
-from typing import TYPE_CHECKING, List, overload
+from typing import TYPE_CHECKING, List
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from ._validation import there_can_be_only_one
-from .functional import line_plot
+from .functional import Line, lineplot
 
 if TYPE_CHECKING:
     from ._colony import Colony
@@ -50,23 +51,15 @@ class Artist:
         return text_kwargs, kwargs
 
     @prettify_axis
-    def line_plot(
+    def lineplot(
         self,
-        x: List | np.ndarray,
-        y: List | np.ndarray | None = None,
+        lines: Line | Iterable[Line],
         ax: plt.Axes | None = None,
         **kwargs
     ) -> plt.Axes:
         """A simple line plot (or multiple lines).
         """
-        # Set defaults for these
-        kwargs.setdefault('color', self.colony.palette)
-        kwargs.setdefault('linestyle', self.colony.linestyle)
-        kwargs.setdefault('marker', self.colony.marker)
-
-        ax = line_plot(x, y, ax=ax, **kwargs)
-
-        return ax
+        return lineplot(lines, ax=ax, **kwargs)
 
     @prettify_axis
     def sketch(self, fn, /, *args, **kwargs):
@@ -97,22 +90,21 @@ class MultiArtist(Artist):
         """
         self.queue.clear()
 
-    def line_plot(self, *args, **kwargs):
-        self.queue.append(Sketch(super().line_plot, args=args, kwargs=kwargs))
+    def lineplot(self, *args, **kwargs):
+        self.queue.append(Sketch(super().lineplot, args=args, kwargs=kwargs))
 
     def sketch(self, *args, **kwargs):
         """For any other plotting fn, such as from seaborn."""
         self.queue.append(Sketch(super().sketch, args=args, kwargs=kwargs))
 
-    @overload
-    def show(self, ncols: int, nrows: None, tight_layout: bool) -> List[plt.Axes]:
-        ...
-
-    @overload
-    def show(self, ncols: None, nrows: int, tight_layout: bool) -> List[plt.Axes]:
-        ...
-
-    def show(self, ncols=3, nrows=None, tight_layout=True, **kwargs):
+    def show(
+        self,
+        ncols: int | None = 3,
+        nrows: int | None = None,
+        tight_layout: bool = True,
+        clear: bool = True,
+        **kwargs
+    ):
         """Displays the grid plot.
         """
         there_can_be_only_one(ncols, nrows)
@@ -129,7 +121,7 @@ class MultiArtist(Artist):
         _, axes = plt.subplots(**kwargs)
 
         if ncols == nrows == 1:
-            axes = [axes]  # For the for loop
+            axes = np.array(axes)  # For the for loop
 
         for i, (sketch, ax) in enumerate(zip_longest(self.queue, axes.flat)):
             # Remove axis if we ran out of sketches
@@ -147,5 +139,8 @@ class MultiArtist(Artist):
 
         if tight_layout:
             plt.tight_layout()
+
+        if clear:
+            self.clear()
 
         return axes
