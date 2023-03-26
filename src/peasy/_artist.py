@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from collections import namedtuple
-from collections.abc import Iterable
 from itertools import zip_longest
 from math import ceil
 from typing import TYPE_CHECKING, List
@@ -11,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from ._validation import there_can_be_only_one
-from .functional import Line, lineplot
+from .functional import lineplot
 
 if TYPE_CHECKING:
     from ._colony import Colony
@@ -30,6 +29,7 @@ def prettify_axis(fn):
         # Post-prep
         self.colony.write_on(ax, **text_kwargs)
         self.colony.prettify_axis(ax)
+        self.colony.correct_font_size(ax)
         return ax
 
     return _inner
@@ -51,15 +51,10 @@ class Artist:
         return text_kwargs, kwargs
 
     @prettify_axis
-    def lineplot(
-        self,
-        lines: Line | Iterable[Line],
-        ax: plt.Axes | None = None,
-        **kwargs
-    ) -> plt.Axes:
+    def lineplot(self, *lines, ax: plt.Axes | None = None, **kwargs) -> plt.Axes:
         """A simple line plot (or multiple lines).
         """
-        return lineplot(lines, ax=ax, **kwargs)
+        return lineplot(*lines, ax=ax, **kwargs)
 
     @prettify_axis
     def sketch(self, fn, /, *args, **kwargs):
@@ -105,8 +100,7 @@ class MultiArtist(Artist):
         clear: bool = True,
         **kwargs
     ):
-        """Displays the grid plot.
-        """
+        """Displays the grid plot."""
         there_can_be_only_one(ncols, nrows)
         if nrows is None:
             ncols = min(ncols, len(self))  # In case we have less plots

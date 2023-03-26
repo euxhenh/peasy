@@ -24,7 +24,7 @@ class Line(Data):
 
 
 def lineplot(
-    lines: Line | Iterable[Line],
+    *lines,
     x: str = "x", y: str = "y",
     hue: str = "index",
     palette: Palette = Cmap.OFFICE,
@@ -37,9 +37,6 @@ def lineplot(
     which can be used in any of seaborn's arguments. By default it is used
     for hue.
     """
-    if isinstance(lines, Line):
-        lines = [lines]
-
     dfs = []
     for i, line in enumerate(lines):
         df = line.asdf()

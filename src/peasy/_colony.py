@@ -71,7 +71,7 @@ class Colony:
         self,
         *,
         ax_figsize: Number | Tuple[Number, Number] = (5, 5),
-        font_size: Number | dict[str, Number] | FontSize = 11,
+        font_size: Number | dict[str, Number] | FontSize = 14,
         despine: bool | str | dict[str, str] | Despine = 'tr',
         palette: str | List[str] | Palette | Cmap = Cmap.OFFICE,
         legend: dict | Legend | None = None,
@@ -135,8 +135,7 @@ class Colony:
 
             # We are sure legend.loc is in [r, l, t, b] here.
             loc, bbox_to_anchor = pdict[legend.loc]  # type: ignore
-            ax.legend(loc=loc, bbox_to_anchor=bbox_to_anchor,
-                      prop={'size': self.font_size.legend}, **kwargs)
+            ax.legend(loc=loc, bbox_to_anchor=bbox_to_anchor, **kwargs)
 
     def prettify_axis(self, ax: plt.Axes) -> None:
         """Applies all decorations to axis."""
@@ -147,6 +146,15 @@ class Colony:
         self.add_legend(ax=ax)
         if self.spine_weight:
             plt.setp(ax.spines.values(), linewidth=self.spine_weight)
+
+    def correct_font_size(self, ax: plt.Axes) -> None:
+        # Set sizes after creation in case we used sns fn's
+        ax.xaxis.label.set_size(self.font_size.xlabel)
+        ax.yaxis.label.set_size(self.font_size.ylabel)
+        ax.title.set_size(self.font_size.title)
+        ax.tick_params(axis='x', labelsize=self.font_size.xticklabels)
+        ax.tick_params(axis='y', labelsize=self.font_size.yticklabels)
+        ax.legend(prop=dict(size=self.font_size.legend))
 
     def write_on(
         self,
@@ -164,9 +172,3 @@ class Colony:
             ax.set_xlabel(xlabel)
         if ylabel:
             ax.set_ylabel(ylabel)
-        # Set sizes after creation in case we used sns fn's
-        ax.xaxis.label.set_size(self.font_size.xlabel)
-        ax.yaxis.label.set_size(self.font_size.ylabel)
-        ax.title.set_size(self.font_size.title)
-        ax.tick_params(axis='x', labelsize=self.font_size.xticklabels)
-        ax.tick_params(axis='y', labelsize=self.font_size.yticklabels)
