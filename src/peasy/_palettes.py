@@ -12,7 +12,7 @@ from matplotlib.colors import (
     to_rgba,
     to_rgba_array,
 )
-from seaborn._core import variable_type
+from seaborn._core.rules import variable_type
 
 from ._bubbles import InfList
 from ._validation import there_should_be_at_least_one

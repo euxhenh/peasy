@@ -1,6 +1,7 @@
 import numpy as np
 import seaborn as sns
 
+from .._custom_typing import Number
 from .._palettes import Palette, palette_from_variable_type
 from .._params import Cmap
 from ._data import Data, as_combined_df
@@ -28,10 +29,17 @@ def scatterplot(
     x: str = "x", y: str = "y",
     hue: str = "index",
     palette: Palette = Cmap.OFFICE,
+    # Some defaults for these
+    linewidth: Number = 0,
+    s: Number = 10,
+    alpha: float = 0.8,
     **kwargs,
 ):
     """Scatterplots."""
     df = as_combined_df(*scatters)
     palette = palette_from_variable_type(df[hue], palette)
+    kwargs['linewidth'] = linewidth
+    kwargs['s'] = s
+    kwargs['alpha'] = alpha
     ax = sns.scatterplot(data=df, x=x, y=y, hue=hue, palette=palette, **kwargs)
     return ax
