@@ -2,7 +2,6 @@ import logging
 from typing import List, Tuple
 
 import matplotlib.pyplot as plt
-import matplotlib.transforms as mtransforms
 import seaborn as sns
 
 from ._artist import Artist, MultiArtist

@@ -136,3 +136,4 @@ figures
 images
 tmp
 tmp.py
+!notebooks/scratch.ipynb
