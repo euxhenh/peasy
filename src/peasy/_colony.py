@@ -2,6 +2,7 @@ import logging
 from typing import List, Tuple
 
 import matplotlib.pyplot as plt
+import matplotlib.transforms as mtransforms
 import seaborn as sns
 
 from ._artist import Artist, MultiArtist
@@ -70,8 +71,8 @@ class Colony:
     def __init__(
         self,
         *,
-        ax_figsize: Number | Tuple[Number, Number] = (5, 5),
-        font_size: Number | dict[str, Number] | FontSize = 14,
+        subfigsize: Number | Tuple[Number, Number] = (5, 5),
+        font_size: Number | dict[str, Number] | FontSize = None,
         despine: bool | str | dict[str, str] | Despine = 'tr',
         palette: str | List[str] | Palette | Cmap = Cmap.OFFICE,
         legend: dict | Legend | None = None,
@@ -79,9 +80,9 @@ class Colony:
         marker: str | List[str] | Marker | None = Marker.NONE,
         spine_weight: Number | None = None,
     ):
-        self.ax_figsize: Tuple[Number, Number] = (
-            (ax_figsize, ax_figsize) if isinstance(ax_figsize, (int, float))
-            else ax_figsize
+        self.subfigsize: Tuple[Number, Number] = (
+            (subfigsize, subfigsize) if isinstance(subfigsize, (int, float))
+            else subfigsize
         )
         self.font_size: FontSize = validate_font_size(font_size)
         self.despine: Despine = validate_despine(despine)
@@ -93,7 +94,7 @@ class Colony:
 
     @property
     def ax_aspect_equal(self) -> bool:
-        return self.ax_figsize[0] == self.ax_figsize[1]
+        return self.subfigsize[0] == self.subfigsize[1]
 
     def new_artist(self, multi: bool = False) -> Artist | MultiArtist:
         """Returns an artist or multiartist for drawing figures.
@@ -101,11 +102,11 @@ class Colony:
         artist = Artist(colony=self) if not multi else MultiArtist(colony=self)
         return artist
 
-    def get_ax_figsize(self, *, nrows: int = 1, ncols: int = 1) -> Tuple[Number, Number]:
+    def get_figsize(self, *, nrows: int = 1, ncols: int = 1) -> Tuple[Number, Number]:
         """Returns the figure size for the given number of rows and
         columns.
         """
-        w, h = self.ax_figsize
+        w, h = self.subfigsize
         return (ncols * w, nrows * h)
 
     def add_legend(self, ax: plt.Axes, legend: Legend | None = None) -> None:
@@ -119,9 +120,11 @@ class Colony:
             outside = True if n_labels >= legend.auto_thresh else False
         else:
             outside = bool(legend.outside)
+        kwargs = legend.kwargs.copy()
+        kwargs['prop'] = dict(size=self.font_size.legend)
 
         if not outside:
-            ax.legend(loc=legend.loc_plt, **legend.kwargs)
+            kwargs['loc'] = legend.loc_plt
         else:
             pdict = {
                 'r': ('center left', (1.04, 0.5)),
@@ -129,19 +132,15 @@ class Colony:
                 't': ('lower center', (0.5, 1.1)),
                 'b': ('upper center', (0.5, -0.1)),
             }
-            kwargs = legend.kwargs.copy()
             if legend.loc in ['t', 'b']:
                 kwargs.setdefault('ncol', n_labels)  # Horizontal legend
+            kwargs['loc'], kwargs['bbox_to_anchor'] = pdict[legend.loc]  # type: ignore
+        ax.legend(**kwargs)
 
-            # We are sure legend.loc is in [r, l, t, b] here.
-            loc, bbox_to_anchor = pdict[legend.loc]  # type: ignore
-            ax.legend(loc=loc, bbox_to_anchor=bbox_to_anchor, **kwargs)
-
-    def prettify_axis(self, ax: plt.Axes) -> None:
+    def prettify_axis(self, ax: plt.Axes, aspect: Number | None = 1) -> None:
         """Applies all decorations to axis."""
-        if self.ax_aspect_equal:
-            # Special case when we want a perfect square plot
-            ax.set_box_aspect(1)
+        if aspect is not None:
+            ax.set_box_aspect(aspect)
         sns.despine(ax=ax, **self.despine._asdict())
         self.add_legend(ax=ax)
         if self.spine_weight:
@@ -154,7 +153,6 @@ class Colony:
         ax.title.set_size(self.font_size.title)
         ax.tick_params(axis='x', labelsize=self.font_size.xticklabels)
         ax.tick_params(axis='y', labelsize=self.font_size.yticklabels)
-        ax.legend(prop=dict(size=self.font_size.legend))
 
     def write_on(
         self,
@@ -164,11 +162,33 @@ class Colony:
         xlabel: str | None = None,
         ylabel: str | None = None,
     ) -> None:
-        """Adds text to axes.
-        """
+        """Adds text to axes."""
         if title:
             ax.set_title(title)
         if xlabel:
             ax.set_xlabel(xlabel)
         if ylabel:
             ax.set_ylabel(ylabel)
+
+    def annotate(
+        self,
+        ax: plt.Axes,
+        /,
+        i: int,
+        annot_style: str = "A",
+    ) -> None:
+        """Adds an index to a plot."""
+        if len(annot_style) not in [1, 2]:
+            raise ValueError(
+                "Annotation style can have only 1 or 2 characters."
+            )
+        ch = annot_style[0]
+        suf = annot_style[1] if len(annot_style) > 1 else ''
+
+        label = f"{chr(ord(ch) + i)}{suf}"
+        ax.set_title(label, loc='left',
+                     fontsize=self.font_size.annotation, fontweight='bold')
+        # ratio = ax.bbox.height / ax.bbox.width
+        # ax.text(-0.12 * ratio, 1.05, label,
+        #         fontsize=self.font_size.annotation,
+        #         transform=ax.transAxes)

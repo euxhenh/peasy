@@ -9,7 +9,6 @@ import yaml
 from ._bubbles import InfList
 from ._palettes import ContinuousPalette, DiscretePalette, Palette
 
-
 __all__ = ['FontSize', 'Despine', 'Cmap', 'Legend',
            'LineStyle', 'LineStyleList', 'Marker', 'MarkerList']
 
@@ -20,14 +19,17 @@ C_PALETTES = yaml.safe_load(open(path / "palettes/continuous.yaml", "r"))
 
 FontSize = namedtuple(
     'FontSize',
-    ["title", "xlabel", "ylabel", "xticklabels", "yticklabels", "legend"],
-    defaults=(11,) * 6,  # type: ignore
+    ["title", "xlabel", "ylabel",
+     "xticklabels", "yticklabels", "legend", "annotation"],
+    defaults=(14, 14, 14, 14, 14, 14, 20),
 )
 
 
-def validate_font_size(font_size: float | dict | FontSize) -> FontSize:
+def validate_font_size(font_size: float | dict | FontSize | None) -> FontSize:
     """Validates and returns a FontSize tuple.
     """
+    if font_size is None:
+        return FontSize()  # all defaults
     if isinstance(font_size, FontSize):
         return font_size
     if isinstance(font_size, dict):
@@ -95,38 +97,18 @@ class Cmap:
     GIVE_ME_ALL = _get_palette('GIVE_ME_ALL')
 
 
-def validate_cmap(cmap: str | Cmap) -> Palette:
-    """Validates a string or list and returns a Palette.
-    """
-    if isinstance(cmap, Cmap):
-        return cmap.value
-
-    if not isinstance(cmap, str):
-        raise ValueError(
-            "Expected a colormap of type str, but "
-            f"found type {type(cmap)}."
-        )
-
-    try:
-        pal = D_PALETTES[cmap.upper()]
-    except Exception:  # Check seaborn if not found in peasy.
-        pal = sns.color_palette(cmap).as_hex()
-
-    return Palette(pal)
-
-
-def validate_palette(palette: str | List[str] | Cmap | Palette) -> Palette:
+def validate_palette(palette: str | List[str] | Palette) -> Palette:
     """Validates either a palette or cmap."""
     if isinstance(palette, Palette):
         return palette
-    if isinstance(palette, (str, Cmap)):
-        return validate_cmap(palette)
+    if isinstance(palette, 'str'):
+        return getattr(Cmap, palette.upper())
     return Palette(palette)
 
 
 @dataclass
 class Legend:
-    loc: int | str = 'r'
+    loc: int | str = 'best'
     outside: bool | str = 'auto'
     # Threshold to determine the bool value of outside='auto'
     # (True if >= thresh)
@@ -139,11 +121,15 @@ class Legend:
         self.kwargs.pop('loc', None)
         self.kwargs.setdefault('frameon', False)
 
-        if self.outside and self.loc not in ['r', 'l', 'b', 't']:
+        if self.outside and self.loc not in ['r', 'l', 'b', 't', 'best']:
             raise ValueError(
                 "Outside legend is only supported "
-                "for loc in ['r', 'l', 'b', 't']."
+                "for loc in ['r', 'l', 'b', 't', 'best]."
             )
+
+        # If outside, best location is to the right
+        if self.outside and self.loc == 'best':
+            self.loc = 'r'
 
         cov = {'r': 'center right', 'l': 'center left',
                'b': 'lower center', 't': 'upper center'}

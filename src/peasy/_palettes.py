@@ -3,6 +3,7 @@ import re
 from typing import List
 
 import numpy as np
+import pandas as pd
 import seaborn as sns
 from matplotlib.colors import (
     ListedColormap,
@@ -11,6 +12,7 @@ from matplotlib.colors import (
     to_rgba,
     to_rgba_array,
 )
+from seaborn._core import variable_type
 
 from ._bubbles import InfList
 from ._validation import there_should_be_at_least_one
@@ -144,3 +146,19 @@ class Palette:
         html = self.c_pal._repr_html_()
         html += self.d_pal._repr_html_()
         return html
+
+
+def palette_from_variable_type(
+    var: pd.Series,
+    palette: Palette,
+) -> DiscretePalette | ContinuousPalette:
+    """Returns a discrete or continuous palette based on the type of
+    var.
+    """
+    if isinstance(palette, Palette):
+        hue_type: str = variable_type(var)
+        if hue_type == 'numeric':
+            palette = palette.c_pal
+        else:
+            palette = palette.d_pal
+    return palette

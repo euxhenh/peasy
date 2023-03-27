@@ -2,15 +2,13 @@ from collections.abc import Iterable
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import seaborn as sns
-from seaborn._core import variable_type
 
 from .._bubbles import default
 from .._custom_typing import Number
-from .._palettes import Palette
+from .._palettes import Palette, palette_from_variable_type
 from .._params import Cmap
-from ._data import Data
+from ._data import Data, as_combined_df
 
 __all__ = ['Line', 'lineplot']
 
@@ -37,26 +35,11 @@ def lineplot(
     which can be used in any of seaborn's arguments. By default it is used
     for hue.
     """
-    dfs = []
-    for i, line in enumerate(lines):
-        df = line.asdf()
-        if hue == 'index' and 'index' not in df:  # Create this
-            df['index'] = str(i)
-        dfs.append(df)
-
-    df: pd.DataFrame = pd.concat(dfs, ignore_index=True, copy=False)
-
-    if isinstance(palette, Palette):
-        hue_type: str = variable_type(df[hue])
-        if hue_type == 'numeric':
-            palette = palette.c_pal
-        else:
-            palette = palette.d_pal
-
+    df = as_combined_df(*lines, with_index=hue == 'index')
+    palette = palette_from_variable_type(df[hue], palette)
     ax = sns.lineplot(data=df, x=x, y=y, hue=hue, palette=palette, **kwargs)
     _shadeplot(ax=ax, lines=lines,
                shade_lb=shade_lb, shade_ub=shade_ub, alpha=shade_alpha)
-
     return ax
 
 
