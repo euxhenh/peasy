@@ -27,13 +27,15 @@ def prettify_axis(fn):
 
     @wraps(fn)
     def _inner(self, *args, ax: plt.Axes | None = None, **kwargs):
+        legend = kwargs.get('legend', None)
         text_kwargs, ax_kwargs, kwargs = Artist._extract_special_keys(**kwargs)
         ax = fn(self, *args, ax=ax, **kwargs)
         # Post-prep
         self.colony.write_on(ax, **text_kwargs)
         self.colony.prettify_axis(ax, **ax_kwargs)
+        legend = self.colony.add_legend(ax, legend)
         self.colony.correct_font_size(ax)
-        return ax
+        return ax, legend
 
     _inner.__name__ = fn.__name__
     return _inner
@@ -46,6 +48,7 @@ def queue_fn(fn):
     @wraps(artist_fn)
     def _inner(self, *args, **kwargs):
         to_call_fn = getattr(super(MultiArtist, self), fn)
+        # kwargs.setdefault('palette', self.colony.palette)
         self.queue.append(Sketch(to_call_fn, args, kwargs))
 
     _inner.__name__ = fn
@@ -83,6 +86,10 @@ class Artist:
         ax = fn(*args, **kwargs)
         return ax
 
+    @staticmethod
+    def savefig(path: str, **kwargs):
+        plt.savefig(path, dpi=300, bbox_inches='tight', transparent=True)
+
 
 class MultiArtist(Artist):
     """A multiartist class that draws multiple figures in a grid. Uses
@@ -117,7 +124,7 @@ class MultiArtist(Artist):
         ncols: int | None = 3, nrows: int | None = None,
         annotate: bool = True, annot_style: str = 'a',
         tight_layout: bool = True, clear: bool = False,
-        mosaic: List | None = None,
+        mosaic: np.ndarray | None = None,
         **kwargs
     ):
         """Displays the grid plot."""
@@ -150,22 +157,32 @@ class MultiArtist(Artist):
         if ncols == nrows == 1:
             axes = np.array(axes)  # For the for loop
 
-        for i, (sketch, ax) in enumerate(zip_longest(self.queue, axes.flat)):
-            # Remove axis if we ran out of sketches
-            if sketch is None:
-                ax.remove()
-                continue
-            fn, args, ax_kwargs = sketch
-            if 'ax' in ax_kwargs:
-                raise ValueError("Cannot pass `ax` to a MultiArtist.")
-            try:
-                fn(*args, ax=ax, **ax_kwargs)
-            except Exception as e:
-                logger.error(f"Exception raised from Plot #{i}.")
-                raise e
+        try:
+            for i, (sketch, ax) in enumerate(zip_longest(self.queue, axes.flat)):
+                # Remove axis if we ran out of sketches
+                if sketch is None:
+                    ax.remove()
+                    continue
+                fn, args, ax_kwargs = sketch
+                if mosaic is not None and \
+                    (mosaic == i).sum(axis=0).max() \
+                        == (mosaic == i).sum(axis=1).max() == 1:
+                    ax_kwargs.setdefault('aspect', 1)
+                elif mosaic is None:
+                    ax_kwargs.setdefault('aspect', 1)
+                if 'ax' in ax_kwargs:
+                    raise ValueError("Cannot pass `ax` to a MultiArtist.")
+                try:
+                    fn(*args, ax=ax, **ax_kwargs)
+                except Exception as e:
+                    logger.error(f"Exception raised from Plot #{i}.")
+                    raise e
 
-            if annotate:
-                self.colony.annotate(ax, i=i, annot_style=annot_style)
+                if annotate:
+                    self.colony.annotate(ax, i=i, annot_style=annot_style)
+        except Exception as e:  # clear on error
+            self.clear()
+            raise e
 
         if tight_layout:
             plt.tight_layout()

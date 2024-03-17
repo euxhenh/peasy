@@ -1,4 +1,5 @@
 import logging
+from math import ceil
 from typing import List, Tuple
 
 import matplotlib.pyplot as plt
@@ -38,7 +39,7 @@ class Colony:
 
     Parameters
     __________
-    ax_figsize: int | Tuple[int, int]
+    subfigsize: int | Tuple[int, int]
         The figure size to use for a single axis. If drawing a grid, then
         each subplot will have this figure size. If single int, will return
         a square figure. Format: (width, height).
@@ -134,14 +135,20 @@ class Colony:
             if legend.loc in ['t', 'b']:
                 kwargs.setdefault('ncol', n_labels)  # Horizontal legend
             kwargs['loc'], kwargs['bbox_to_anchor'] = pdict[legend.loc]  # type: ignore
-        ax.legend(**kwargs)
+
+        ax_legend = ax.legend(**kwargs)
+        return ax_legend
+        if legend.loc in ['r', 'l']:
+            axis_height = ax.get_window_extent().height
+            ax_legend_height = ax_legend.get_window_extent().height
+            n_cols = ceil(ax_legend_height / axis_height)
+            ax_legend.set_ncols(n_cols)
 
     def prettify_axis(self, ax: plt.Axes, aspect: Number | None = 1) -> None:
         """Applies all decorations to axis."""
         if aspect is not None:
             ax.set_box_aspect(aspect)
         sns.despine(ax=ax, **self.despine._asdict())
-        self.add_legend(ax=ax)
         if self.spine_weight:
             plt.setp(ax.spines.values(), linewidth=self.spine_weight)
 
@@ -169,13 +176,7 @@ class Colony:
         if ylabel:
             ax.set_ylabel(ylabel)
 
-    def annotate(
-        self,
-        ax: plt.Axes,
-        /,
-        i: int,
-        annot_style: str = "A",
-    ) -> None:
+    def annotate(self, ax: plt.Axes, /, i: int, annot_style: str = "A") -> None:
         """Adds an index to a plot."""
         if len(annot_style) not in [1, 2]:
             raise ValueError(
@@ -187,7 +188,3 @@ class Colony:
         label = f"{chr(ord(ch) + i)}{suf}"
         ax.set_title(label, loc='left',
                      fontsize=self.font_size.annotation, fontweight='bold')
-        # ratio = ax.bbox.height / ax.bbox.width
-        # ax.text(-0.12 * ratio, 1.05, label,
-        #         fontsize=self.font_size.annotation,
-        #         transform=ax.transAxes)

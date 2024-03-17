@@ -101,7 +101,7 @@ def validate_palette(palette: str | List[str] | Palette) -> Palette:
     """Validates either a palette or cmap."""
     if isinstance(palette, Palette):
         return palette
-    if isinstance(palette, 'str'):
+    if isinstance(palette, str):
         return getattr(Cmap, palette.upper())
     return Palette(palette)
 
