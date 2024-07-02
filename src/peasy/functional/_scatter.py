@@ -29,13 +29,14 @@ def _add_centroids(
     df: pd.DataFrame, ax,
     x: str = 'x', y: str = 'y',
     hue: str = 'index',
+    numbered: bool = False,
     **kwargs,
 ):
     items, groups = group_indices(df[hue])
-    for item, group in zip(items, groups):
+    for idx, (item, group) in enumerate(zip(items, groups)):
         x1 = df[x][group].mean()
         x2 = df[y][group].mean()
-        ax.text(x1, x2, item)
+        ax.text(x1, x2, item if not numbered else idx)
 
 
 def scatterplot(
@@ -48,6 +49,7 @@ def scatterplot(
     s: Number = 8,
     alpha: float = 0.8,
     add_centroids: bool = False,
+    numbered: bool = False,
     **kwargs,
 ):
     """Scatterplots."""
@@ -56,7 +58,14 @@ def scatterplot(
     kwargs['linewidth'] = linewidth
     kwargs['s'] = s
     kwargs['alpha'] = alpha
+
+    if numbered:
+        unq_labels = np.unique(df[hue])
+        unq_labels = {v: f"{idx + 1}. {v}" for idx, v in enumerate(unq_labels)}
+        new_hue = [unq_labels[v] for v in hue]
+        df[hue] = new_hue
+
     ax = sns.scatterplot(data=df, x=x, y=y, hue=hue, palette=palette, **kwargs)
     if add_centroids:
-        _add_centroids(df, ax=ax, x=x, y=y, hue=hue)
+        _add_centroids(df, ax=ax, x=x, y=y, hue=hue, numbered=numbered)
     return ax
